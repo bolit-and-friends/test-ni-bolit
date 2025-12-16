@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Online Examination System</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; }
+  header { background:#2c3e50; color:#fff; padding:15px; text-align:center; }
+  .container { max-width:900px; margin:30px auto; background:#fff; padding:25px; border-radius:8px; }
+  input, textarea, select { width:100%; padding:8px; margin-bottom:10px; box-sizing:border-box; }
+  button { background:#3498db; color:#fff; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-size:16px; }
+  button:hover { background:#2980b9; }
+  .hidden { display:none; }
+  .question { margin-bottom:20px; }
+  .question p { margin-bottom:10px; }
+  table { width:100%; border-collapse:collapse; margin-top:15px; }
+  th, td { border:1px solid #ccc; padding:8px; }
+  #timer { font-size:18px; font-weight:bold; color:#c0392b; margin-bottom:20px; }
+  form { display:flex; flex-direction:column; }
+  form .question { display:flex; flex-direction:column; }
+  form button { align-self:center; margin-top:20px; }
+</style>
+</head>
+<body>
+<header><h1>Online Examination System</h1></header>
+<div class="container">
+
+<!-- LOGIN -->
+<div id="login">
+  <h2>Login</h2>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <button onclick="loginUser()">Login</button>
+  <p id="msg"></p>
+</div>
+
+<!-- AUTHOR PANEL -->
+<div id="author" class="hidden">
+  <h2>Author Control Panel</h2>
+  <h3>Create / Edit Question</h3>
+  <textarea id="qText" placeholder="Question"></textarea>
+  <input id="a1" placeholder="Choice A">
+  <input id="a2" placeholder="Choice B">
+  <input id="a3" placeholder="Choice C">
+  <input id="a4" placeholder="Choice D">
+  <select id="correct">
+    <option value="0">A</option>
+    <option value="1">B</option>
+    <option value="2">C</option>
+    <option value="3">D</option>
+  </select>
+  <button onclick="addQuestion()">Save Question</button>
+
+  <h3>Questions</h3>
+  <ol id="qlist"></ol>
+
+  <h3>Student Results</h3>
+  <table><tr><th>Name</th><th>Score</th></tr><tbody id="rlist"></tbody></table>
+</div>
+
+<!-- STUDENT -->
+<div id="student" class="hidden">
+  <h2>Exam</h2>
+  <p id="timer"></p>
+  <form id="exam"></form>
+  <button onclick="submitExam()">Submit</button>
+  <p id="final"></p>
+</div>
+</div>
+
+<script>
+const AUTHOR = { user:"admin", pass:"admin123" };
+let questions = JSON.parse(localStorage.getItem("questions")) || [];
+let results = JSON.parse(localStorage.getItem("results")) || [];
+let student = "";
+let timeLeft = 300; // 5 minutes
+let timerInt;
+
+function loginUser(){
+  if(username.value===AUTHOR.user && password.value===AUTHOR.pass){
+    login.classList.add("hidden"); author.classList.remove("hidden"); loadAuthor();
+  } else if(username.value && password.value){
+    student=username.value;
+    if(localStorage.getItem("done_"+student)){
+      msg.innerText="You already took this exam."; return;
+    }
+    login.classList.add("hidden"); studentDiv();
+  } else msg.innerText="Invalid login";
+}
+
+function studentDiv(){
+  student=document.getElementById('student');
+  student.classList.remove("hidden");
+  loadExam(); startTimer();
+  window.onblur=autoSubmit; window.onbeforeunload=autoSubmit;
+}
+
+function startTimer(){
+  timer.innerText=`Time Left: ${timeLeft}s`;
+  timerInt=setInterval(()=>{
+    timeLeft--; timer.innerText=`Time Left: ${timeLeft}s`;
+    if(timeLeft<=0) autoSubmit();
+  },1000);
+}
+
+function addQuestion(){
+  if(!qText.value || !a1.value || !a2.value || !a3.value || !a4.value){
+    alert("Please fill in the question and all choices.");
+    return;
+  }
+
+  questions.push({
+    q: qText.value,
+    options: [a1.value, a2.value, a3.value, a4.value],
+    correct: parseInt(correct.value)
+  });
+
+  localStorage.setItem("questions", JSON.stringify(questions));
+
+  qText.value = ""; a1.value = ""; a2.value = ""; a3.value = ""; a4.value = "";
+  loadAuthor();
+}
+
+function loadAuthor(){
+  qlist.innerHTML = "";
+  questions.forEach(q => { let li = document.createElement("li"); li.innerText = q.q; qlist.appendChild(li); });
+  rlist.innerHTML = "";
+  results.forEach(r => { rlist.innerHTML += `<tr><td>${r.name}</td><td>${r.score}</td></tr>`; });
+}
+
+function loadExam(){
+  exam.innerHTML="";
+  questions.forEach((q,i)=>{
+    let html=`<div class='question'><p>${i+1}. ${q.q}</p>`;
+    q.options.forEach((o,idx)=>{ html+=`<label><input type='radio' name='q${i}' value='${idx}'> ${o}</label>`; });
+    html+='</div>'; exam.innerHTML+=html;
+  });
+}
+
+function submitExam(){
+  clearInterval(timerInt);
+  let score=0;
+  questions.forEach((q,i)=>{
+    let ans=document.querySelector(`input[name=q${i}]:checked`);
+    if(ans && parseInt(ans.value)===q.correct) score++;
+  });
+  localStorage.setItem("done_"+student,true);
+  results.push({name:student,score:`${score}/${questions.length}`});
+  localStorage.setItem("results",JSON.stringify(results));
+  document.body.innerHTML = `<div style='display:flex;align-items:center;justify-content:center;height:100vh;font-size:24px;font-weight:bold;text-align:center;'>Mana kag test bro2,<br>huwata lang ag result didtong sir</div>`;
+}
+
+function autoSubmit(){ submitExam(); }
+</script>
+</body>
+</html>
